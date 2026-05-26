@@ -18,6 +18,8 @@
     durationLabel: $("#durationLabel"),
     zoomSlider: $("#zoomSlider"),
     zoomLabel: $("#zoomLabel"),
+    waveScrollSlider: $("#waveScrollSlider"),
+    waveScrollRangeLabel: $("#waveScrollRangeLabel"),
     waveViewport: $("#waveViewport"),
     waveCanvas: $("#waveCanvas"),
     emptyWave: $("#emptyWave"),
@@ -25,6 +27,7 @@
     markerList: $("#markerList"),
     fileNamesInput: $("#fileNamesInput"),
     fileNameCharacterFilter: $("#fileNameCharacterFilter"),
+    exportScopeNote: $("#exportScopeNote"),
     exportAll: $("#exportAll"),
     exportSelected: $("#exportSelected"),
     exportNumberChecklist: $("#exportNumberChecklist"),
@@ -101,6 +104,7 @@
       addCurrentMarker: "現在位置にマーカー",
       clearMarkers: "全マーカー削除",
       zoom: "表示倍率",
+      waveScrollLabel: "波形位置",
       waveHint: "左クリック：シーク / 右クリック：マーカー追加 / Ctrl+ホイール：ズーム / ホイール：左右スクロール",
       waveAreaLabel: "波形エリア",
       emptyWave: "ここに波形が表示されます",
@@ -113,8 +117,9 @@
       fileNameListLabel: "ファイル名リスト",
       fileNamePlaceholder: "001_serif.wav\n002_serif.wav\n003_serif.wav",
       exportTargetLabel: "書き出し対象",
-      exportAllLabel: "全部を書き出す",
-      exportSelectedLabel: "指定した番号だけ書き出す",
+      exportAllLabel: "表示中の候補を全部書き出す",
+      exportSelectedLabel: "チェックした番号だけ書き出す",
+      exportFilterNotice: (name, count) => `キャラ絞り込み中：${name} の絞り込み結果順で ${count}件が書き出し候補です。`,
       exportChecklistHint: "書き出す番号にチェックを入れてください。",
       exportChecklistEmpty: "表示できる番号がありません。",
       fadeOptionsTitle: "フェード処理",
@@ -199,6 +204,7 @@
       addCurrentMarker: "Add marker at current position",
       clearMarkers: "Clear all markers",
       zoom: "Zoom",
+      waveScrollLabel: "Wave position",
       waveHint: "Left click: seek / Right click: add marker / Ctrl + wheel: zoom / Wheel: horizontal scroll",
       waveAreaLabel: "Waveform area",
       emptyWave: "The waveform will appear here",
@@ -211,8 +217,9 @@
       fileNameListLabel: "File name list",
       fileNamePlaceholder: "001_line.wav\n002_line.wav\n003_line.wav",
       exportTargetLabel: "Export target",
-      exportAllLabel: "Export all files",
-      exportSelectedLabel: "Export only selected numbers",
+      exportAllLabel: "Export all visible candidates",
+      exportSelectedLabel: "Export checked numbers only",
+      exportFilterNotice: (name, count) => `Character filter is active: ${count} item(s) are export candidates in the filtered order for ${name}.`,
       exportChecklistHint: "Check the numbers you want to export.",
       exportChecklistEmpty: "No numbers to display.",
       fadeOptionsTitle: "Fade processing",
@@ -297,6 +304,7 @@
       addCurrentMarker: "현재 위치에 마커 추가",
       clearMarkers: "모든 마커 삭제",
       zoom: "표시 배율",
+      waveScrollLabel: "파형 위치",
       waveHint: "좌클릭: 탐색 / 우클릭: 마커 추가 / Ctrl+휠: 확대·축소 / 휠: 좌우 스크롤",
       waveAreaLabel: "파형 영역",
       emptyWave: "여기에 파형이 표시됩니다",
@@ -309,8 +317,9 @@
       fileNameListLabel: "파일명 목록",
       fileNamePlaceholder: "001_line.wav\n002_line.wav\n003_line.wav",
       exportTargetLabel: "내보내기 대상",
-      exportAllLabel: "전체 내보내기",
-      exportSelectedLabel: "지정한 번호만 내보내기",
+      exportAllLabel: "표시 중인 후보 모두 내보내기",
+      exportSelectedLabel: "체크한 번호만 내보내기",
+      exportFilterNotice: (name, count) => `캐릭터 필터 적용 중: ${name}의 필터 결과 순서대로 ${count}개 항목이 내보내기 후보입니다.`,
       exportChecklistHint: "내보낼 번호를 체크하세요.",
       exportChecklistEmpty: "표시할 번호가 없습니다.",
       fadeOptionsTitle: "페이드 처리",
@@ -653,6 +662,22 @@
     return Boolean(getFileNameFilterValue()) && state.scriptEntries.length > 0;
   }
 
+  function updateExportScopeNote(count = 0) {
+    if (!els.exportScopeNote) return;
+    const filterValue = getFileNameFilterValue();
+    if (filterValue && state.scriptEntries.length > 0) {
+      els.exportScopeNote.hidden = false;
+      els.exportScopeNote.textContent = t(
+        "exportFilterNotice",
+        getCharacterOptionLabel(filterValue),
+        count
+      );
+    } else {
+      els.exportScopeNote.hidden = true;
+      els.exportScopeNote.textContent = "";
+    }
+  }
+
   function getFilteredScriptEntriesForFileNames() {
     const filterValue = getFileNameFilterValue();
     if (!filterValue) return state.scriptEntries;
@@ -744,6 +769,7 @@
     els.addMarkerBtn.disabled = !enabled;
     els.clearMarkersBtn.disabled = !enabled;
     els.zoomSlider.disabled = !enabled;
+    if (els.waveScrollSlider) els.waveScrollSlider.disabled = !enabled || Number(els.waveScrollSlider.max || 0) <= 0;
     els.exportBtn.disabled = !enabled;
   }
 
@@ -769,13 +795,64 @@
   }
 
   function getViewportSeconds() {
-    return els.waveCanvas.clientWidth / state.zoomPxPerSec;
+    const width = els.waveCanvas.clientWidth || els.waveViewport.clientWidth || 1;
+    return width / Math.max(1, state.zoomPxPerSec);
+  }
+
+  function getMaxViewStart() {
+    const duration = getDuration();
+    const visible = getViewportSeconds();
+    return Math.max(0, duration - visible);
+  }
+
+  function getFitZoomPxPerSec() {
+    const duration = getDuration();
+    const width = els.waveCanvas.clientWidth || els.waveViewport.clientWidth || 1;
+    if (!duration || duration <= 0) return 120;
+    return Math.max(1, Math.floor((width / duration) * 0.98));
+  }
+
+  function updateZoomControls({ fitIfNeeded = false } = {}) {
+    if (!els.zoomSlider) return;
+    const duration = getDuration();
+    const width = els.waveCanvas.clientWidth || els.waveViewport.clientWidth || 1;
+    const minZoom = 1;
+    const fitZoom = getFitZoomPxPerSec();
+    const maxZoom = Math.max(2200, Math.ceil(width / Math.max(duration || 1, 0.001)), fitZoom);
+
+    els.zoomSlider.min = String(minZoom);
+    els.zoomSlider.max = String(maxZoom);
+    els.zoomSlider.step = "1";
+
+    if (!state.audioBuffer) {
+      state.zoomPxPerSec = clamp(Number(els.zoomSlider.value) || 120, minZoom, maxZoom);
+    } else if (fitIfNeeded) {
+      state.zoomPxPerSec = clamp(Math.min(Number(els.zoomSlider.value) || 120, fitZoom), minZoom, maxZoom);
+    } else {
+      state.zoomPxPerSec = clamp(state.zoomPxPerSec, minZoom, maxZoom);
+    }
+
+    els.zoomSlider.value = String(Math.round(state.zoomPxPerSec));
+    els.zoomLabel.textContent = `${Math.round(state.zoomPxPerSec)} px/sec`;
+  }
+
+  function updateWaveScrollSlider() {
+    if (!els.waveScrollSlider || !els.waveScrollRangeLabel) return;
+    const duration = getDuration();
+    const visible = getViewportSeconds();
+    const maxStart = getMaxViewStart();
+    const visibleEnd = Math.min(duration, state.viewStartSec + visible);
+
+    els.waveScrollSlider.min = "0";
+    els.waveScrollSlider.max = String(maxStart);
+    els.waveScrollSlider.step = "0.001";
+    els.waveScrollSlider.value = String(clamp(state.viewStartSec, 0, maxStart));
+    els.waveScrollSlider.disabled = !state.audioBuffer || maxStart <= 0;
+    els.waveScrollRangeLabel.textContent = `${formatTime(state.viewStartSec)} - ${formatTime(visibleEnd)}`;
   }
 
   function clampViewStart() {
-    const duration = getDuration();
-    const visible = getViewportSeconds();
-    state.viewStartSec = clamp(state.viewStartSec, 0, Math.max(0, duration - visible));
+    state.viewStartSec = clamp(state.viewStartSec, 0, getMaxViewStart());
   }
 
   function timeToX(time) {
@@ -795,7 +872,9 @@
     els.waveCanvas.style.height = `${rect.height}px`;
     const ctx = els.waveCanvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateZoomControls();
     clampViewStart();
+    updateWaveScrollSlider();
     drawWaveform();
   }
 
@@ -962,7 +1041,8 @@
       state.viewStartSec = 0;
       state.markers = [];
       state.nextMarkerId = 1;
-      state.zoomPxPerSec = Number(els.zoomSlider.value);
+      updateZoomControls({ fitIfNeeded: true });
+      state.viewStartSec = 0;
 
       els.emptyWave.style.display = "none";
       els.durationLabel.textContent = formatTime(decoded.duration);
@@ -1419,14 +1499,19 @@
     const segments = [];
 
     if (isFileNameCharacterFiltered()) {
+      // キャラ絞り込み中に打ったマーカーは、絞り込み後の台詞順に対応させる。
+      // 旧処理では台本全体での entry.order を使っていたため、
+      // 例：全体の9番目以降にある台詞が ranges[9] 以降を参照し、
+      // 実際に絞り込み後の順番で14個マーカーを打っても候補が欠けることがあった。
       getFilteredScriptEntriesForFileNames().forEach((entry, filteredIndex) => {
-        const range = ranges[entry.order];
+        const range = ranges[filteredIndex];
         if (!range) return;
         segments.push({
           start: range.start,
           end: range.end,
-          originalIndex: entry.order,
-          name: sanitizeFileName(nameLines[filteredIndex] || entry.number || autoName(entry.order)),
+          originalIndex: filteredIndex,
+          scriptOrder: entry.order,
+          name: sanitizeFileName(nameLines[filteredIndex] || entry.number || autoName(filteredIndex)),
         });
       });
     } else {
@@ -1460,6 +1545,7 @@
 
   function renderSegments() {
     const segments = getSegments();
+    updateExportScopeNote(segments.length);
     const selection = parseExportSelection(segments);
     renderExportNumberChecklist(segments, selection);
     const selectedCount = selection.selectedNumbers.size;
@@ -1587,7 +1673,9 @@
   }
 
   function renderAll() {
+    updateZoomControls();
     clampViewStart();
+    updateWaveScrollSlider();
     updateTimeLabels();
     renderMarkers();
     renderSegments();
@@ -1886,11 +1974,17 @@
 
   function onZoomSliderInput() {
     if (!state.audioBuffer) return;
-    const width = els.waveCanvas.clientWidth;
-    const centerTime = state.viewStartSec + (width / 2) / state.zoomPxPerSec;
-    state.zoomPxPerSec = Number(els.zoomSlider.value);
+    const width = els.waveCanvas.clientWidth || els.waveViewport.clientWidth || 1;
+    const centerTime = state.viewStartSec + (width / 2) / Math.max(1, state.zoomPxPerSec);
+    state.zoomPxPerSec = clamp(Number(els.zoomSlider.value) || 1, Number(els.zoomSlider.min) || 1, Number(els.zoomSlider.max) || 2200);
     els.zoomLabel.textContent = `${Math.round(state.zoomPxPerSec)} px/sec`;
     state.viewStartSec = centerTime - (width / 2) / state.zoomPxPerSec;
+    renderAll();
+  }
+
+  function onWaveScrollSliderInput() {
+    if (!state.audioBuffer || !els.waveScrollSlider) return;
+    state.viewStartSec = clamp(Number(els.waveScrollSlider.value) || 0, 0, getMaxViewStart());
     renderAll();
   }
 
@@ -1937,6 +2031,7 @@
     els.addMarkerBtn.addEventListener("click", () => addMarker(state.currentTime));
     els.clearMarkersBtn.addEventListener("click", clearMarkers);
     els.zoomSlider.addEventListener("input", onZoomSliderInput);
+    if (els.waveScrollSlider) els.waveScrollSlider.addEventListener("input", onWaveScrollSliderInput);
     els.fileNamesInput.addEventListener("input", () => {
       if (!state.isSyncingFileNames) state.scriptNamesActive = false;
       renderSegments();

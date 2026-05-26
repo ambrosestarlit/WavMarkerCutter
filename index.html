@@ -86,7 +86,7 @@
         <div class="wave-toolbar">
           <label>
             <span data-i18n="zoom">表示倍率</span>
-            <input type="range" id="zoomSlider" min="40" max="2200" value="120" step="10" disabled>
+            <input type="range" id="zoomSlider" min="1" max="2200" value="120" step="1" disabled>
           </label>
           <span id="zoomLabel">120 px/sec</span>
           <span class="hint" data-i18n="waveHint">左クリック：シーク / 右クリック：マーカー追加 / Ctrl+ホイール：ズーム / ホイール：左右スクロール</span>
@@ -95,6 +95,14 @@
         <div id="waveViewport" class="wave-viewport" tabindex="0" aria-label="波形エリア" data-i18n-aria-label="waveAreaLabel">
           <canvas id="waveCanvas"></canvas>
           <div id="emptyWave" class="empty-wave" data-i18n="emptyWave">ここに波形が表示されます</div>
+        </div>
+
+        <div class="wave-scrollbar">
+          <label for="waveScrollSlider">
+            <span data-i18n="waveScrollLabel">波形位置</span>
+            <input type="range" id="waveScrollSlider" min="0" max="0" value="0" step="0.001" disabled>
+          </label>
+          <span id="waveScrollRangeLabel">00:00.000 - 00:00.000</span>
         </div>
       </section>
 
@@ -119,6 +127,7 @@
 
           <label class="field-label" for="fileNameCharacterFilter" data-i18n="fileNameCharacterFilterLabel">キャラ絞り込み</label>
           <select id="fileNameCharacterFilter" class="settings-select"></select>
+          <div id="exportScopeNote" class="export-scope-note" hidden></div>
 
           <label class="field-label" for="fileNamesInput" data-i18n="fileNameListLabel">ファイル名リスト</label>
           <textarea id="fileNamesInput" data-i18n-placeholder="fileNamePlaceholder" placeholder="001_serif.wav&#10;002_serif.wav&#10;003_serif.wav"></textarea>
@@ -127,11 +136,11 @@
             <div class="field-label inner-label" data-i18n="exportTargetLabel">書き出し対象</div>
             <label class="check-row compact-check">
               <input type="radio" name="exportTargetMode" id="exportAll" value="all" checked>
-              <span data-i18n="exportAllLabel">全部を書き出す</span>
+              <span data-i18n="exportAllLabel">表示中の候補を全部書き出す</span>
             </label>
             <label class="check-row compact-check">
               <input type="radio" name="exportTargetMode" id="exportSelected" value="selected">
-              <span data-i18n="exportSelectedLabel">指定した番号だけ書き出す</span>
+              <span data-i18n="exportSelectedLabel">チェックした番号だけ書き出す</span>
             </label>
             <div id="exportNumberChecklist" class="export-number-checklist" aria-live="polite"></div>
           </div>
