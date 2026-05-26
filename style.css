@@ -46,7 +46,7 @@ input:disabled {
 }
 
 .app-shell {
-  width: min(1480px, calc(100% - 32px));
+  width: min(1680px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 36px;
 }
@@ -141,7 +141,7 @@ h3 {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: 330px minmax(0, 1fr) 380px;
   gap: 18px;
 }
 
@@ -328,6 +328,120 @@ h3 {
   pointer-events: none;
 }
 
+
+.script-panel {
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+}
+
+.script-head .subtext {
+  min-height: 1.35em;
+}
+
+.script-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.mini-file-picker span {
+  width: 100%;
+}
+
+.select-field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.select-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: #fff;
+  font-weight: 800;
+  outline: none;
+}
+
+.select-field select:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 4px rgba(143, 191, 177, 0.16);
+}
+
+.script-editor {
+  flex: 1;
+  min-height: 560px;
+  margin: 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: #fff;
+  overflow: auto;
+  outline: none;
+  line-height: 1.75;
+  font-family: "Consolas", "Noto Sans JP", monospace;
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+}
+
+.script-editor:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 4px rgba(143, 191, 177, 0.16);
+}
+
+.script-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  font-family: "Segoe UI", "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  font-weight: 800;
+}
+
+.script-editor.is-filtered {
+  background: #fbfdfc;
+  cursor: default;
+}
+
+.script-line {
+  min-height: 1.75em;
+  margin-bottom: 7px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  line-height: 1.9;
+}
+
+.script-line:last-child {
+  margin-bottom: 0;
+}
+
+.script-line.is-numbered {
+  background: linear-gradient(90deg, rgba(255, 229, 105, 0.62), rgba(255, 241, 171, 0.36));
+}
+
+.script-line.is-hidden-result {
+  color: var(--muted);
+  background: var(--panel-2);
+  font-family: "Segoe UI", "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  font-weight: 800;
+}
+
+.script-line-num {
+  display: inline-block;
+  min-width: 3.2em;
+  margin-right: 0.25em;
+  color: #8b6b00;
+  font-weight: 900;
+}
+
 .side-column {
   display: grid;
   gap: 18px;
@@ -453,6 +567,25 @@ textarea {
   line-height: 1.6;
 }
 
+.settings-select {
+  display: block;
+  width: calc(100% - 36px);
+  min-height: 42px;
+  margin: 0 18px 10px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: #fff;
+  font-weight: 800;
+  outline: none;
+}
+
+.settings-select:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 4px rgba(143, 191, 177, 0.16);
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 108px;
@@ -486,6 +619,63 @@ textarea {
 .check-row input {
   margin-top: 4px;
   accent-color: var(--mint-dark);
+}
+
+.export-number-checklist {
+  margin: 0 18px 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.export-number-checklist.is-disabled {
+  opacity: 0.62;
+}
+
+.export-check-hint,
+.export-check-empty {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.export-check-empty {
+  margin-bottom: 0;
+}
+
+.export-check-list {
+  display: grid;
+  gap: 7px;
+}
+
+.export-check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.export-check-row input {
+  accent-color: var(--mint-dark);
+}
+
+.export-check-row input:disabled {
+  cursor: not-allowed;
+}
+
+.export-check-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
 }
 
 #exportBtn {
@@ -546,23 +736,28 @@ dialog::backdrop {
   margin-bottom: 18px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
   .workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  .script-panel {
+    grid-column: 1 / -1;
+    min-height: 420px;
+  }
+
+  .script-editor {
+    min-height: 260px;
   }
 
   .side-column {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .side-column .panel:last-child {
-    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
   .app-shell {
-    width: min(100% - 20px, 1480px);
+    width: min(100% - 20px, 1680px);
     padding-top: 10px;
   }
 
@@ -580,8 +775,13 @@ dialog::backdrop {
     justify-content: center;
   }
 
+  .workspace,
   .side-column {
     grid-template-columns: 1fr;
+  }
+
+  .script-panel {
+    grid-column: auto;
   }
 
   .side-column .panel:last-child {
@@ -683,3 +883,5 @@ dialog::backdrop {
     text-align: left;
   }
 }
+
+/* 左側の台本は全キャラ表示・絞込表示どちらも行間を広めにして読みやすくする */

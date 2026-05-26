@@ -5,6 +5,10 @@
 
   const els = {
     audioFile: $("#audioFile"),
+    scriptFile: $("#scriptFile"),
+    scriptCharacterFilter: $("#scriptCharacterFilter"),
+    scriptEditor: $("#scriptEditor"),
+    scriptStats: $("#scriptStats"),
     fileInfo: $("#fileInfo"),
     playPauseBtn: $("#playPauseBtn"),
     stopBtn: $("#stopBtn"),
@@ -20,9 +24,10 @@
     markerCount: $("#markerCount"),
     markerList: $("#markerList"),
     fileNamesInput: $("#fileNamesInput"),
+    fileNameCharacterFilter: $("#fileNameCharacterFilter"),
     exportAll: $("#exportAll"),
     exportSelected: $("#exportSelected"),
-    exportNumbersInput: $("#exportNumbersInput"),
+    exportNumberChecklist: $("#exportNumberChecklist"),
     fadeInEnabled: $("#fadeInEnabled"),
     fadeOutEnabled: $("#fadeOutEnabled"),
     fadeDuration: $("#fadeDuration"),
@@ -49,6 +54,13 @@
     isPlaying: false,
     currentTime: 0,
     markers: [],
+    scriptText: "",
+    scriptEntries: [],
+    scriptCharacters: [],
+    scriptNamesActive: false,
+    isRenderingScript: false,
+    isSyncingFileNames: false,
+    isComposingScript: false,
     nextMarkerId: 1,
     zoomPxPerSec: 120,
     viewStartSec: 0,
@@ -57,6 +69,7 @@
     animationFrame: 0,
     previewEndTime: null,
     previewSegmentIndex: null,
+    selectedExportKeys: new Set(),
     lang: getInitialLang(),
     lastStatusKey: "exportWaiting",
   };
@@ -70,6 +83,17 @@
       helpBtn: "取扱説明",
       waveEditTitle: "波形編集",
       filePrompt: "WAVファイルを読み込んでください。",
+      scriptTitle: "台本",
+      scriptDesc: "TXT読み込み、または貼り付けで台本を確認できます。",
+      loadTxt: "TXTを読み込む",
+      scriptFilterLabel: "絞込",
+      allCharacters: "全キャラ",
+      noCharacterName: "キャラ名なし",
+      scriptPlaceholder: "ここに台本を貼り付け",
+      scriptStatsSummary: (lines, numbered, chars) => `${lines}行 / 3桁番号 ${numbered}件 / キャラ ${chars}件`,
+      scriptFilteredSummary: (name, count) => `${name}：${count}行を表示中`,
+      scriptNoFilteredLines: "該当する台詞がありません。",
+      scriptLoaded: (name) => `${name} を読み込みました。`,
       loadWav: "WAVを読み込む",
       play: "再生",
       pause: "一時停止",
@@ -85,12 +109,14 @@
       noMarkers: "まだマーカーがありません。",
       exportSettingsTitle: "書き出し設定",
       exportSettingsDesc: "1行につき1ファイル名。分割順に上から適用されます。",
+      fileNameCharacterFilterLabel: "キャラ絞り込み",
       fileNameListLabel: "ファイル名リスト",
       fileNamePlaceholder: "001_serif.wav\n002_serif.wav\n003_serif.wav",
       exportTargetLabel: "書き出し対象",
       exportAllLabel: "全部を書き出す",
       exportSelectedLabel: "指定した番号だけ書き出す",
-      exportNumberPlaceholder: "例：1,3,5-8",
+      exportChecklistHint: "書き出す番号にチェックを入れてください。",
+      exportChecklistEmpty: "表示できる番号がありません。",
       fadeOptionsTitle: "フェード処理",
       fadeInLabel: "フェードインを適用",
       fadeOutLabel: "フェードアウトを適用",
@@ -116,7 +142,7 @@
       helpNamesTitle: "ファイル名リスト",
       helpNamesText: "ファイル名は1行に1つずつ入力してください。上から順番に、分割番号の小さいファイルへ適用されます。空欄や足りない分は001.wav、002.wavのような自動連番名になります。",
       helpTargetTitle: "書き出し対象",
-      helpTargetText: "全部を書き出すほか、1,3,5-8 のように番号を指定して一部だけ書き出せます。番号はプレビュー一覧の番号に対応しています。",
+      helpTargetText: "全部を書き出すほか、『指定した番号だけ書き出す』を選ぶと、表示中の番号をチェックボックスで選択できます。キャラ絞込中は絞込結果の番号だけが表示されます。",
       helpFadeTitle: "フェード処理",
       helpFadeText: "フェードイン・フェードアウトをチェックで有効化できます。フェード時間はスライダーで指定し、プレビュー再生にも反映されます。",
       helpFolderTitle: "フォルダ保存について",
@@ -139,7 +165,7 @@
       selectedTag: "対象",
       skippedTag: "対象外",
       noTargets: "書き出し対象がありません。",
-      noSelectedTargets: "指定番号に一致する書き出し対象がありません。",
+      noSelectedTargets: "チェックされた書き出し対象がありません。",
       exportSelectionInvalid: "番号指定に無効な値があります。プレビュー番号に合わせて指定してください。",
       exportPreparing: (done, total) => `書き出し準備中... ${done} / ${total}`,
       exportCutting: (done, total) => `音声を切り出し中... ${done} / ${total}`,
@@ -155,6 +181,17 @@
       helpBtn: "Help",
       waveEditTitle: "Waveform Editor",
       filePrompt: "Load a WAV file to begin.",
+      scriptTitle: "Script",
+      scriptDesc: "Load a TXT file or paste a script while checking your lines.",
+      loadTxt: "Load TXT",
+      scriptFilterLabel: "Filter",
+      allCharacters: "All characters",
+      noCharacterName: "No character name",
+      scriptPlaceholder: "Paste your script here",
+      scriptStatsSummary: (lines, numbered, chars) => `${lines} lines / ${numbered} numbered / ${chars} characters`,
+      scriptFilteredSummary: (name, count) => `${name}: showing ${count} lines`,
+      scriptNoFilteredLines: "No matching lines.",
+      scriptLoaded: (name) => `Loaded ${name}.`,
       loadWav: "Load WAV",
       play: "Play",
       pause: "Pause",
@@ -170,12 +207,14 @@
       noMarkers: "No markers yet.",
       exportSettingsTitle: "Export Settings",
       exportSettingsDesc: "Enter one file name per line. Names are applied from top to bottom in split order.",
+      fileNameCharacterFilterLabel: "Character filter",
       fileNameListLabel: "File name list",
       fileNamePlaceholder: "001_line.wav\n002_line.wav\n003_line.wav",
       exportTargetLabel: "Export target",
       exportAllLabel: "Export all files",
       exportSelectedLabel: "Export only selected numbers",
-      exportNumberPlaceholder: "Example: 1,3,5-8",
+      exportChecklistHint: "Check the numbers you want to export.",
+      exportChecklistEmpty: "No numbers to display.",
       fadeOptionsTitle: "Fade processing",
       fadeInLabel: "Apply fade in",
       fadeOutLabel: "Apply fade out",
@@ -201,7 +240,7 @@
       helpNamesTitle: "File name list",
       helpNamesText: "Enter one file name per line. Names are applied from top to bottom to the split files. Missing names are auto-numbered as 001.wav, 002.wav, and so on.",
       helpTargetTitle: "Export target",
-      helpTargetText: "Besides exporting all files, you can export only specific numbers such as 1,3,5-8. The numbers match the preview list.",
+      helpTargetText: "Besides exporting all files, selecting ‘Export only selected numbers’ shows checkboxes for the currently displayed numbers. When a character filter is active, only the filtered numbers are shown.",
       helpFadeTitle: "Fade processing",
       helpFadeText: "Enable fade in and fade out with checkboxes. The fade length is controlled by the slider and is also applied to preview playback.",
       helpFolderTitle: "Folder saving",
@@ -224,7 +263,7 @@
       selectedTag: "Target",
       skippedTag: "Skipped",
       noTargets: "There is nothing to export.",
-      noSelectedTargets: "No export targets match the selected numbers.",
+      noSelectedTargets: "No export targets are checked.",
       exportSelectionInvalid: "Some selected numbers are invalid. Match the numbers shown in the preview list.",
       exportPreparing: (done, total) => `Preparing export... ${done} / ${total}`,
       exportCutting: (done, total) => `Cutting audio... ${done} / ${total}`,
@@ -240,6 +279,17 @@
       helpBtn: "사용 설명",
       waveEditTitle: "파형 편집",
       filePrompt: "WAV 파일을 불러와 주세요.",
+      scriptTitle: "대본",
+      scriptDesc: "TXT를 불러오거나 붙여넣어서 대본을 확인할 수 있습니다.",
+      loadTxt: "TXT 불러오기",
+      scriptFilterLabel: "필터",
+      allCharacters: "전체 캐릭터",
+      noCharacterName: "캐릭터명 없음",
+      scriptPlaceholder: "여기에 대본을 붙여넣기",
+      scriptStatsSummary: (lines, numbered, chars) => `${lines}줄 / 3자리 번호 ${numbered}개 / 캐릭터 ${chars}명`,
+      scriptFilteredSummary: (name, count) => `${name}: ${count}줄 표시 중`,
+      scriptNoFilteredLines: "해당하는 대사가 없습니다.",
+      scriptLoaded: (name) => `${name}을(를) 불러왔습니다.`,
       loadWav: "WAV 불러오기",
       play: "재생",
       pause: "일시정지",
@@ -255,12 +305,14 @@
       noMarkers: "아직 마커가 없습니다.",
       exportSettingsTitle: "내보내기 설정",
       exportSettingsDesc: "한 줄에 파일명 하나씩 입력하세요. 분할 순서대로 위에서부터 적용됩니다.",
+      fileNameCharacterFilterLabel: "캐릭터 필터",
       fileNameListLabel: "파일명 목록",
       fileNamePlaceholder: "001_line.wav\n002_line.wav\n003_line.wav",
       exportTargetLabel: "내보내기 대상",
       exportAllLabel: "전체 내보내기",
       exportSelectedLabel: "지정한 번호만 내보내기",
-      exportNumberPlaceholder: "예: 1,3,5-8",
+      exportChecklistHint: "내보낼 번호를 체크하세요.",
+      exportChecklistEmpty: "표시할 번호가 없습니다.",
       fadeOptionsTitle: "페이드 처리",
       fadeInLabel: "페이드 인 적용",
       fadeOutLabel: "페이드 아웃 적용",
@@ -286,7 +338,7 @@
       helpNamesTitle: "파일명 목록",
       helpNamesText: "파일명은 한 줄에 하나씩 입력하세요. 위에서부터 분할 번호가 작은 파일에 적용됩니다. 부족한 이름은 001.wav, 002.wav처럼 자동 번호 이름으로 저장됩니다.",
       helpTargetTitle: "내보내기 대상",
-      helpTargetText: "전체 내보내기 외에도 1,3,5-8처럼 번호를 지정해 일부만 내보낼 수 있습니다. 번호는 미리보기 목록의 번호와 대응합니다.",
+      helpTargetText: "전체 내보내기 외에도 ‘지정한 번호만 내보내기’를 선택하면 현재 표시 중인 번호를 체크박스로 고를 수 있습니다. 캐릭터 필터 중에는 필터 결과의 번호만 표시됩니다.",
       helpFadeTitle: "페이드 처리",
       helpFadeText: "체크박스로 페이드 인/아웃을 켤 수 있습니다. 페이드 시간은 슬라이더로 설정하며 미리보기 재생에도 반영됩니다.",
       helpFolderTitle: "폴더 저장 안내",
@@ -309,7 +361,7 @@
       selectedTag: "대상",
       skippedTag: "제외",
       noTargets: "내보낼 대상이 없습니다.",
-      noSelectedTargets: "지정한 번호와 일치하는 내보내기 대상이 없습니다.",
+      noSelectedTargets: "체크된 내보내기 대상이 없습니다.",
       exportSelectionInvalid: "번호 지정에 올바르지 않은 값이 있습니다. 미리보기 번호에 맞춰 지정하세요.",
       exportPreparing: (done, total) => `내보내기 준비 중... ${done} / ${total}`,
       exportCutting: (done, total) => `오디오 분할 중... ${done} / ${total}`,
@@ -321,11 +373,11 @@
   };
 
   function getInitialLang() {
-    const saved = localStorage.getItem("wmc_language");
+    // 初期表示は必ず日本語。
+    // 旧版の自動判定・保存値で韓国語表示になる事故を避けるため、
+    // 新しい保存キーだけを参照する。
+    const saved = localStorage.getItem("wmc_language_v2");
     if (["ja", "en", "ko"].includes(saved)) return saved;
-    const browser = (navigator.language || "ja").toLowerCase();
-    if (browser.startsWith("ko")) return "ko";
-    if (browser.startsWith("en")) return "en";
     return "ja";
   }
 
@@ -342,7 +394,9 @@
       node.textContent = t(node.dataset.i18n);
     });
     document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
-      node.placeholder = t(node.dataset.i18nPlaceholder);
+      const text = t(node.dataset.i18nPlaceholder);
+      if ("placeholder" in node) node.placeholder = text;
+      node.dataset.placeholder = text;
     });
     document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
       node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
@@ -352,6 +406,9 @@
     updateFileInfo();
     updateFadeDurationLabel();
     updateExportSelectionUI();
+    refreshCharacterFilters();
+    renderScriptEditor(false);
+    updateScriptStats();
     renderAll();
   }
 
@@ -367,6 +424,303 @@
       state.audioBuffer.sampleRate.toLocaleString(),
       state.audioBuffer.numberOfChannels
     );
+  }
+
+
+  const NO_CHARACTER_VALUE = "__wmc_no_character__";
+
+  function normalizeScriptText(text) {
+    return String(text || "").replace(/\r\n?/g, "\n");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function getScriptLineInfo(line, index = 0) {
+    const text = String(line || "");
+    const numberMatch = text.match(/^(\d{3})(.*)$/);
+    if (!numberMatch) {
+      return { index, line: text, numbered: false, number: "", character: "" };
+    }
+
+    const characterMatch = text.match(/^\d{3}[\s\u3000]*([^「:：]+?)[\s\u3000]*(?=「|:|：)/);
+    const character = characterMatch ? characterMatch[1].trim() : "";
+    return {
+      index,
+      line: text,
+      numbered: true,
+      number: numberMatch[1],
+      character,
+    };
+  }
+
+  function parseScriptEntries() {
+    const lines = normalizeScriptText(state.scriptText).split("\n");
+    const entries = [];
+    const characters = new Set();
+    let hasNoCharacter = false;
+
+    lines.forEach((line, index) => {
+      const info = getScriptLineInfo(line, index);
+      if (!info.numbered) return;
+      entries.push({ ...info, order: entries.length });
+      if (info.character) characters.add(info.character);
+      else hasNoCharacter = true;
+    });
+
+    state.scriptEntries = entries;
+    state.scriptCharacters = [...characters].sort((a, b) => a.localeCompare(b, "ja"));
+    state.hasNoCharacterEntries = hasNoCharacter;
+  }
+
+  function getCharacterOptionLabel(value) {
+    if (value === NO_CHARACTER_VALUE) return t("noCharacterName");
+    return value;
+  }
+
+  function matchesCharacter(entry, filterValue) {
+    if (!filterValue) return true;
+    if (filterValue === NO_CHARACTER_VALUE) return !entry.character;
+    return entry.character === filterValue;
+  }
+
+  function refreshCharacterFilters() {
+    [els.scriptCharacterFilter, els.fileNameCharacterFilter].forEach((select) => {
+      if (!select) return;
+      const previous = select.value;
+      const options = [
+        { value: "", label: t("allCharacters") },
+        ...state.scriptCharacters.map((name) => ({ value: name, label: name })),
+      ];
+      if (state.hasNoCharacterEntries) {
+        options.push({ value: NO_CHARACTER_VALUE, label: t("noCharacterName") });
+      }
+
+      select.innerHTML = "";
+      options.forEach((option) => {
+        const node = document.createElement("option");
+        node.value = option.value;
+        node.textContent = option.label;
+        select.appendChild(node);
+      });
+
+      const stillExists = options.some((option) => option.value === previous);
+      select.value = stillExists ? previous : "";
+    });
+  }
+
+  function getScriptEditorText() {
+    if (!els.scriptEditor) return "";
+
+    // contenteditable + innerText は、ブラウザによって <div> 行の間に
+    // 余分な改行を混ぜることがあり、Backspace 入力時に行が増える原因になる。
+    // 自前で .script-line 単位に読み取って、1表示行 = 1テキスト行として扱う。
+    const lineNodes = Array.from(els.scriptEditor.querySelectorAll(":scope > .script-line"));
+    if (lineNodes.length) {
+      return normalizeScriptText(lineNodes.map((node) => node.textContent || "").join("\n"));
+    }
+
+    const text = els.scriptEditor.textContent || "";
+    return normalizeScriptText(text).replace(/\n$/g, "");
+  }
+
+  function getCaretOffset(root) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return 0;
+    const range = selection.getRangeAt(0);
+    if (!root.contains(range.endContainer)) return 0;
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(root);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    return preCaretRange.toString().length;
+  }
+
+  function restoreCaret(root, offset) {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let currentOffset = 0;
+    let node = walker.nextNode();
+
+    while (node) {
+      const nextOffset = currentOffset + node.nodeValue.length;
+      if (offset <= nextOffset) {
+        const range = document.createRange();
+        range.setStart(node, Math.max(0, offset - currentOffset));
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+      currentOffset = nextOffset;
+      node = walker.nextNode();
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function renderScriptEditor(preserveCaret = false) {
+    if (!els.scriptEditor) return;
+    const filterValue = els.scriptCharacterFilter ? els.scriptCharacterFilter.value : "";
+    const isFiltered = Boolean(filterValue);
+    const shouldRestoreCaret = preserveCaret && !isFiltered && document.activeElement === els.scriptEditor;
+    const caretOffset = shouldRestoreCaret ? getCaretOffset(els.scriptEditor) : 0;
+    const text = normalizeScriptText(state.scriptText);
+
+    state.isRenderingScript = true;
+    els.scriptEditor.contentEditable = isFiltered ? "false" : "true";
+    els.scriptEditor.classList.toggle("is-filtered", isFiltered);
+
+    if (!text) {
+      els.scriptEditor.innerHTML = "";
+      state.isRenderingScript = false;
+      return;
+    }
+
+    const lines = text.split("\n");
+    let shown = 0;
+    const html = [];
+
+    lines.forEach((line, index) => {
+      const info = getScriptLineInfo(line, index);
+      if (isFiltered && (!info.numbered || !matchesCharacter(info, filterValue))) return;
+      shown += 1;
+
+      const classes = ["script-line"];
+      if (info.numbered) classes.push("is-numbered");
+
+      let content = escapeHtml(line) || "<br>";
+      if (info.numbered) {
+        const number = escapeHtml(info.number);
+        const rest = escapeHtml(line.slice(3)) || "";
+        content = `<span class="script-line-num">${number}</span>${rest || "<br>"}`;
+      }
+      html.push(`<div class="${classes.join(" ")}" data-line="${index + 1}">${content}</div>`);
+    });
+
+    if (isFiltered && shown === 0) {
+      html.push(`<div class="script-line is-hidden-result">${escapeHtml(t("scriptNoFilteredLines"))}</div>`);
+    }
+
+    els.scriptEditor.innerHTML = html.join("");
+    state.isRenderingScript = false;
+
+    if (shouldRestoreCaret) {
+      restoreCaret(els.scriptEditor, caretOffset);
+    }
+  }
+
+  function updateScriptStats() {
+    if (!els.scriptStats) return;
+    const text = normalizeScriptText(state.scriptText);
+    if (!text) {
+      els.scriptStats.textContent = t("scriptDesc");
+      return;
+    }
+
+    const lines = text.split("\n");
+    const filterValue = els.scriptCharacterFilter ? els.scriptCharacterFilter.value : "";
+    if (filterValue) {
+      const count = state.scriptEntries.filter((entry) => matchesCharacter(entry, filterValue)).length;
+      els.scriptStats.textContent = t("scriptFilteredSummary", getCharacterOptionLabel(filterValue), count);
+      return;
+    }
+
+    els.scriptStats.textContent = t(
+      "scriptStatsSummary",
+      lines.length,
+      state.scriptEntries.length,
+      state.scriptCharacters.length + (state.hasNoCharacterEntries ? 1 : 0)
+    );
+  }
+
+  function getFileNameFilterValue() {
+    return els.fileNameCharacterFilter ? els.fileNameCharacterFilter.value : "";
+  }
+
+  function isFileNameCharacterFiltered() {
+    return Boolean(getFileNameFilterValue()) && state.scriptEntries.length > 0;
+  }
+
+  function getFilteredScriptEntriesForFileNames() {
+    const filterValue = getFileNameFilterValue();
+    if (!filterValue) return state.scriptEntries;
+    return state.scriptEntries.filter((entry) => matchesCharacter(entry, filterValue));
+  }
+
+  function getScriptFileNameLines() {
+    return getFilteredScriptEntriesForFileNames().map((entry) => entry.number);
+  }
+
+  function syncFileNameListFromScript() {
+    if (!state.scriptNamesActive || !state.scriptEntries.length) return;
+    state.isSyncingFileNames = true;
+    els.fileNamesInput.value = getScriptFileNameLines().join("\n");
+    state.isSyncingFileNames = false;
+    renderSegments();
+  }
+
+  function processScriptText({ syncFileNames = true, preserveCaret = false, renderEditor = true } = {}) {
+    parseScriptEntries();
+    refreshCharacterFilters();
+    if (syncFileNames) {
+      const wasScriptNamesActive = state.scriptNamesActive;
+      state.scriptNamesActive = state.scriptEntries.length > 0;
+      if (state.scriptNamesActive) {
+        syncFileNameListFromScript();
+      } else if (wasScriptNamesActive) {
+        state.isSyncingFileNames = true;
+        els.fileNamesInput.value = "";
+        state.isSyncingFileNames = false;
+        renderSegments();
+      }
+    }
+    if (renderEditor) {
+      renderScriptEditor(preserveCaret);
+    }
+    updateScriptStats();
+  }
+
+  async function loadScriptFile(file) {
+    if (!file) return;
+    try {
+      state.scriptText = normalizeScriptText(await file.text());
+      processScriptText({ syncFileNames: true, preserveCaret: false });
+      els.scriptStats.textContent = t("scriptLoaded", file.name);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      els.scriptFile.value = "";
+    }
+  }
+
+  function insertPlainTextAtSelection(text) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.setEndAfter(node);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function isTextEditingElement(element) {
+    if (!element) return false;
+    return ["TEXTAREA", "INPUT", "SELECT"].includes(element.tagName) || element.isContentEditable;
   }
 
   const WAVE_BG = "#ffffff";
@@ -870,8 +1224,7 @@
   function parseNameLines() {
     return els.fileNamesInput.value
       .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
+      .map((line) => line.trim());
   }
 
   function sanitizeFileName(name) {
@@ -917,54 +1270,111 @@
 
   function updateExportSelectionUI() {
     const selectedMode = getExportMode() === "selected";
-    els.exportNumbersInput.disabled = !selectedMode;
+    if (els.exportNumberChecklist) {
+      els.exportNumberChecklist.classList.toggle("is-disabled", !selectedMode);
+    }
   }
 
-  function parseExportSelection(total) {
+  function getSegmentKey(segment, index = 0) {
+    const base = Number.isFinite(segment.originalIndex) ? segment.originalIndex : index;
+    return String(base);
+  }
+
+  function getExportNumberLabel(segment, index = 0) {
+    const name = String(segment.name || "").replace(/\.wav$/i, "");
+    const numbered = name.match(/^(\d{3})/);
+    if (numbered) return numbered[1];
+    const original = Number.isFinite(segment.originalIndex) ? segment.originalIndex : index;
+    return String(original + 1).padStart(3, "0");
+  }
+
+  function parseExportSelection(segments = []) {
     const mode = getExportMode();
+    const visibleKeys = new Set(segments.map((segment, index) => getSegmentKey(segment, index)));
+
     if (mode === "all") {
       return {
         mode,
-        selectedNumbers: new Set(Array.from({ length: total }, (_, i) => i + 1)),
+        selectedKeys: new Set(visibleKeys),
+        selectedNumbers: new Set(segments.map((_, index) => index + 1)),
         invalid: [],
       };
     }
 
-    const selectedNumbers = new Set();
-    const invalid = [];
-    const text = els.exportNumbersInput.value.trim();
-    const tokens = text ? text.split(/[\s,、]+/).filter(Boolean) : [];
+    const selectedKeys = new Set(
+      [...state.selectedExportKeys].filter((key) => visibleKeys.has(key))
+    );
 
-    tokens.forEach((token) => {
-      const range = token.match(/^(\d+)\s*[-~〜ー]\s*(\d+)$/);
-      const single = token.match(/^\d+$/);
-      if (range) {
-        let start = Number(range[1]);
-        let end = Number(range[2]);
-        if (start > end) [start, end] = [end, start];
-        if (start < 1 || end > total) invalid.push(token);
-        for (let n = Math.max(1, start); n <= Math.min(total, end); n++) selectedNumbers.add(n);
-      } else if (single) {
-        const n = Number(token);
-        if (n >= 1 && n <= total) selectedNumbers.add(n);
-        else invalid.push(token);
-      } else {
-        invalid.push(token);
-      }
+    return {
+      mode,
+      selectedKeys,
+      selectedNumbers: new Set(
+        segments
+          .map((segment, index) => selectedKeys.has(getSegmentKey(segment, index)) ? index + 1 : null)
+          .filter((number) => number !== null)
+      ),
+      invalid: [],
+    };
+  }
+
+  function renderExportNumberChecklist(segments = [], selection = parseExportSelection(segments)) {
+    if (!els.exportNumberChecklist) return;
+
+    const selectedMode = selection.mode === "selected";
+    els.exportNumberChecklist.classList.toggle("is-disabled", !selectedMode);
+    els.exportNumberChecklist.innerHTML = "";
+
+    if (!segments.length) {
+      const empty = document.createElement("div");
+      empty.className = "export-check-empty";
+      empty.textContent = t("exportChecklistEmpty");
+      els.exportNumberChecklist.appendChild(empty);
+      return;
+    }
+
+    const hint = document.createElement("div");
+    hint.className = "export-check-hint";
+    hint.textContent = t("exportChecklistHint");
+    els.exportNumberChecklist.appendChild(hint);
+
+    const list = document.createElement("div");
+    list.className = "export-check-list";
+
+    segments.forEach((segment, index) => {
+      const key = getSegmentKey(segment, index);
+      const label = document.createElement("label");
+      label.className = "export-check-row";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.disabled = !selectedMode;
+      checkbox.checked = selectedMode ? state.selectedExportKeys.has(key) : true;
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) state.selectedExportKeys.add(key);
+        else state.selectedExportKeys.delete(key);
+        renderSegments();
+      });
+
+      const number = document.createElement("span");
+      number.className = "export-check-number";
+      number.textContent = getExportNumberLabel(segment, index);
+
+      label.append(checkbox, number);
+      list.appendChild(label);
     });
 
-    return { mode, selectedNumbers, invalid };
+    els.exportNumberChecklist.appendChild(list);
   }
 
   function getExportTargets(segments = getSegments()) {
-    const selection = parseExportSelection(segments.length);
+    const selection = parseExportSelection(segments);
     const targets = segments
-      .map((segment, index) => ({ ...segment, originalIndex: index }))
-      .filter((_, index) => selection.selectedNumbers.has(index + 1));
+      .map((segment, index) => ({ ...segment, visibleIndex: index }))
+      .filter((segment, index) => selection.selectedKeys.has(getSegmentKey(segment, index)));
     return { targets, selection };
   }
 
-  function getSegments() {
+  function buildSegmentRanges() {
     if (!state.audioBuffer) return [];
     const duration = getDuration();
     const markerTimes = getSortedMarkers()
@@ -982,23 +1392,52 @@
       }
     });
 
-    if (uniquePoints.length < 2) return [{ start: 0, end: duration }];
+    if (uniquePoints.length < 2) {
+      return [{ start: 0, end: duration, originalIndex: 0 }];
+    }
 
-    const nameLines = parseNameLines();
-    const segments = [];
+    const ranges = [];
     for (let i = 0; i < uniquePoints.length - 1; i++) {
       const start = uniquePoints[i];
       const end = uniquePoints[i + 1];
       if (els.trimSilentEdge.checked && end - start < MIN_MARKER_GAP) continue;
-      segments.push({
-        start,
-        end,
-        name: sanitizeFileName(nameLines[segments.length] || autoName(segments.length)),
-      });
+      ranges.push({ start, end, originalIndex: ranges.length });
     }
 
-    if (!segments.length) {
-      segments.push({ start: 0, end: duration, name: sanitizeFileName(nameLines[0] || autoName(0)) });
+    if (!ranges.length) {
+      ranges.push({ start: 0, end: duration, originalIndex: 0 });
+    }
+
+    return ranges;
+  }
+
+  function getSegments() {
+    const ranges = buildSegmentRanges();
+    if (!ranges.length) return [];
+
+    const nameLines = parseNameLines();
+    const segments = [];
+
+    if (isFileNameCharacterFiltered()) {
+      getFilteredScriptEntriesForFileNames().forEach((entry, filteredIndex) => {
+        const range = ranges[entry.order];
+        if (!range) return;
+        segments.push({
+          start: range.start,
+          end: range.end,
+          originalIndex: entry.order,
+          name: sanitizeFileName(nameLines[filteredIndex] || entry.number || autoName(entry.order)),
+        });
+      });
+    } else {
+      ranges.forEach((range, index) => {
+        segments.push({
+          start: range.start,
+          end: range.end,
+          originalIndex: range.originalIndex,
+          name: sanitizeFileName(nameLines[index] || autoName(index)),
+        });
+      });
     }
 
     return ensureUniqueNames(segments);
@@ -1021,7 +1460,8 @@
 
   function renderSegments() {
     const segments = getSegments();
-    const selection = parseExportSelection(segments.length);
+    const selection = parseExportSelection(segments);
+    renderExportNumberChecklist(segments, selection);
     const selectedCount = selection.selectedNumbers.size;
     els.segmentCount.textContent = selection.mode === "selected"
       ? `${selectedCount} / ${segments.length}`
@@ -1044,7 +1484,7 @@
 
     segments.forEach((segment, index) => {
       const number = index + 1;
-      const isTarget = selection.selectedNumbers.has(number);
+      const isTarget = selection.selectedKeys.has(getSegmentKey(segment, index));
       const item = document.createElement("div");
       item.className = selection.mode === "selected" && !isTarget
         ? "segment-item is-muted"
@@ -1456,12 +1896,51 @@
 
   function bindEvents() {
     els.audioFile.addEventListener("change", (event) => loadAudioFile(event.target.files[0]));
+    els.scriptFile.addEventListener("change", (event) => loadScriptFile(event.target.files[0]));
+    els.scriptEditor.addEventListener("compositionstart", () => {
+      state.isComposingScript = true;
+    });
+    els.scriptEditor.addEventListener("compositionend", () => {
+      state.isComposingScript = false;
+      state.scriptText = getScriptEditorText();
+      // 入力中に innerHTML を作り直すと、Backspace で行が増える場合があるため
+      // 編集中は解析・ファイル名同期だけ行い、装飾の再描画は blur / paste / 読み込み時に限定する。
+      processScriptText({ syncFileNames: true, renderEditor: false });
+    });
+    els.scriptEditor.addEventListener("input", () => {
+      if (state.isRenderingScript || state.isComposingScript || els.scriptEditor.contentEditable === "false") return;
+      state.scriptText = getScriptEditorText();
+      processScriptText({ syncFileNames: true, renderEditor: false });
+    });
+    els.scriptEditor.addEventListener("blur", () => {
+      if (els.scriptEditor.contentEditable === "false") return;
+      state.scriptText = getScriptEditorText();
+      processScriptText({ syncFileNames: true, preserveCaret: false, renderEditor: true });
+    });
+    els.scriptEditor.addEventListener("paste", (event) => {
+      if (els.scriptEditor.contentEditable === "false") return;
+      event.preventDefault();
+      insertPlainTextAtSelection(event.clipboardData.getData("text/plain"));
+      state.scriptText = getScriptEditorText();
+      processScriptText({ syncFileNames: true, preserveCaret: true, renderEditor: true });
+    });
+    els.scriptCharacterFilter.addEventListener("change", () => {
+      renderScriptEditor(false);
+      updateScriptStats();
+    });
+    els.fileNameCharacterFilter.addEventListener("change", () => {
+      if (state.scriptNamesActive) syncFileNameListFromScript();
+      renderSegments();
+    });
     els.playPauseBtn.addEventListener("click", playPause);
     els.stopBtn.addEventListener("click", stopPlayback);
     els.addMarkerBtn.addEventListener("click", () => addMarker(state.currentTime));
     els.clearMarkersBtn.addEventListener("click", clearMarkers);
     els.zoomSlider.addEventListener("input", onZoomSliderInput);
-    els.fileNamesInput.addEventListener("input", renderSegments);
+    els.fileNamesInput.addEventListener("input", () => {
+      if (!state.isSyncingFileNames) state.scriptNamesActive = false;
+      renderSegments();
+    });
     els.exportAll.addEventListener("change", () => {
       updateExportSelectionUI();
       renderSegments();
@@ -1470,7 +1949,7 @@
       updateExportSelectionUI();
       renderSegments();
     });
-    els.exportNumbersInput.addEventListener("input", renderSegments);
+    if (els.exportNumberChecklist) renderExportNumberChecklist(getSegments());
     els.fadeInEnabled.addEventListener("change", renderSegments);
     els.fadeOutEnabled.addEventListener("change", renderSegments);
     els.fadeDuration.addEventListener("input", () => {
@@ -1479,7 +1958,7 @@
     });
     els.languageSelect.addEventListener("change", () => {
       state.lang = els.languageSelect.value;
-      localStorage.setItem("wmc_language", state.lang);
+      localStorage.setItem("wmc_language_v2", state.lang);
       applyLanguage();
     });
     els.trimSilentEdge.addEventListener("change", renderAll);
@@ -1501,11 +1980,11 @@
 
     window.addEventListener("keydown", (event) => {
       if (!state.audioBuffer) return;
-      if (event.code === "Space" && !["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) {
+      if (event.code === "Space" && !isTextEditingElement(document.activeElement)) {
         event.preventDefault();
         playPause();
       }
-      if (event.key.toLowerCase() === "m" && !["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) {
+      if (event.key.toLowerCase() === "m" && !isTextEditingElement(document.activeElement)) {
         addMarker(state.currentTime);
       }
     });
