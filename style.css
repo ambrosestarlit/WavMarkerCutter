@@ -599,6 +599,23 @@ textarea {
   line-height: 1.6;
 }
 
+/* 書き出し設定パネルは、画面が低い時でもパネル内だけで縦スクロールできるようにする */
+.export-panel {
+  max-height: calc(100dvh - 32px);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.export-panel .panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
 .settings-select {
   display: block;
   width: calc(100% - 36px);
@@ -1306,7 +1323,20 @@ body {
   }
 
   .export-panel {
-    overflow: visible;
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .export-panel .panel-head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
   }
 }
 
@@ -1317,5 +1347,91 @@ body {
 
   .range-row strong {
     text-align: left;
+  }
+}
+
+/* 右パネル修正：書き出し設定カードの「中身だけ」を確実にスクロールさせる */
+.export-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: calc(100vh - 32px);
+  height: min(680px, calc(100svh - 32px));
+  max-height: calc(100vh - 32px) !important;
+  max-height: calc(100svh - 32px) !important;
+  min-height: 280px !important;
+  overflow: hidden !important;
+}
+
+.export-panel > .panel-head {
+  flex: 0 0 auto !important;
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+}
+
+.export-panel-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+  padding-bottom: 4px;
+}
+
+.export-panel-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.export-panel-body::-webkit-scrollbar-thumb {
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.export-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (min-width: 901px) {
+  .export-panel {
+    height: min(680px, 100%) !important;
+    max-height: 100% !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .export-panel {
+    height: calc(100vh - 24px) !important;
+    height: calc(100svh - 24px) !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100svh - 24px) !important;
+  }
+
+  #fileNamesInput {
+    min-height: 96px;
+    height: 116px;
+    resize: none;
+  }
+}
+
+@media (max-height: 620px) {
+  .export-panel {
+    min-height: 240px !important;
+  }
+
+  .export-panel .field-label {
+    padding-top: 10px;
+  }
+
+  .export-panel #fileNamesInput {
+    min-height: 72px;
+    height: 86px;
+  }
+
+  .export-panel .settings-block {
+    margin-bottom: 10px;
   }
 }

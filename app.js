@@ -1988,6 +1988,25 @@
     renderAll();
   }
 
+
+  function syncExportPanelScrollHeight() {
+    const panel = document.querySelector(".export-panel");
+    if (!panel) return;
+
+    if (!window.matchMedia("(max-width: 900px)").matches) {
+      panel.style.height = "";
+      panel.style.maxHeight = "";
+      return;
+    }
+
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const rect = panel.getBoundingClientRect();
+    const top = Math.max(12, rect.top);
+    const height = Math.max(240, Math.floor(viewportHeight - top - 12));
+    panel.style.height = `${height}px`;
+    panel.style.maxHeight = `${height}px`;
+  }
+
   function bindEvents() {
     els.audioFile.addEventListener("change", (event) => loadAudioFile(event.target.files[0]));
     els.scriptFile.addEventListener("change", (event) => loadScriptFile(event.target.files[0]));
@@ -2066,6 +2085,10 @@
     els.waveViewport.addEventListener("wheel", onWaveWheel, { passive: false });
 
     window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("resize", syncExportPanelScrollHeight);
+    window.addEventListener("orientationchange", syncExportPanelScrollHeight);
+    window.addEventListener("scroll", syncExportPanelScrollHeight, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", syncExportPanelScrollHeight);
 
     els.openHelpBtn.addEventListener("click", () => els.helpDialog.showModal());
     els.closeHelpBtn.addEventListener("click", () => els.helpDialog.close());
@@ -2087,5 +2110,7 @@
 
   bindEvents();
   resizeCanvas();
+  syncExportPanelScrollHeight();
+  requestAnimationFrame(syncExportPanelScrollHeight);
   applyLanguage();
 })();

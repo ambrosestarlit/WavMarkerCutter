@@ -125,55 +125,57 @@
             </div>
           </div>
 
-          <label class="field-label" for="fileNameCharacterFilter" data-i18n="fileNameCharacterFilterLabel">キャラ絞り込み</label>
-          <select id="fileNameCharacterFilter" class="settings-select"></select>
-          <div id="exportScopeNote" class="export-scope-note" hidden></div>
+          <div class="export-panel-body" id="exportPanelBody">
+            <label class="field-label" for="fileNameCharacterFilter" data-i18n="fileNameCharacterFilterLabel">キャラ絞り込み</label>
+            <select id="fileNameCharacterFilter" class="settings-select"></select>
+            <div id="exportScopeNote" class="export-scope-note" hidden></div>
 
-          <label class="field-label" for="fileNamesInput" data-i18n="fileNameListLabel">ファイル名リスト</label>
-          <textarea id="fileNamesInput" data-i18n-placeholder="fileNamePlaceholder" placeholder="001_serif.wav&#10;002_serif.wav&#10;003_serif.wav"></textarea>
+            <label class="field-label" for="fileNamesInput" data-i18n="fileNameListLabel">ファイル名リスト</label>
+            <textarea id="fileNamesInput" data-i18n-placeholder="fileNamePlaceholder" placeholder="001_serif.wav&#10;002_serif.wav&#10;003_serif.wav"></textarea>
 
-          <div class="settings-block">
-            <div class="field-label inner-label" data-i18n="exportTargetLabel">書き出し対象</div>
-            <label class="check-row compact-check">
-              <input type="radio" name="exportTargetMode" id="exportAll" value="all" checked>
-              <span data-i18n="exportAllLabel">表示中の候補を全部書き出す</span>
+            <div class="settings-block">
+              <div class="field-label inner-label" data-i18n="exportTargetLabel">書き出し対象</div>
+              <label class="check-row compact-check">
+                <input type="radio" name="exportTargetMode" id="exportAll" value="all" checked>
+                <span data-i18n="exportAllLabel">表示中の候補を全部書き出す</span>
+              </label>
+              <label class="check-row compact-check">
+                <input type="radio" name="exportTargetMode" id="exportSelected" value="selected">
+                <span data-i18n="exportSelectedLabel">チェックした番号だけ書き出す</span>
+              </label>
+              <div id="exportNumberChecklist" class="export-number-checklist" aria-live="polite"></div>
+            </div>
+
+            <div class="settings-block">
+              <div class="field-label inner-label" data-i18n="fadeOptionsTitle">フェード処理</div>
+              <label class="check-row compact-check">
+                <input type="checkbox" id="fadeInEnabled">
+                <span data-i18n="fadeInLabel">フェードインを適用</span>
+              </label>
+              <label class="check-row compact-check">
+                <input type="checkbox" id="fadeOutEnabled">
+                <span data-i18n="fadeOutLabel">フェードアウトを適用</span>
+              </label>
+              <label class="range-row" for="fadeDuration">
+                <span data-i18n="fadeDurationLabel">フェード時間</span>
+                <input type="range" id="fadeDuration" min="0" max="5" value="0.10" step="0.01">
+                <strong id="fadeDurationValue">0.10s</strong>
+              </label>
+            </div>
+
+            <label class="check-row">
+              <input type="checkbox" id="useFolderSave">
+              <span data-i18n="folderSaveLabel">ZIPではなく選択フォルダへ直接保存（Chrome/Edgeなど対応ブラウザのみ）</span>
             </label>
-            <label class="check-row compact-check">
-              <input type="radio" name="exportTargetMode" id="exportSelected" value="selected">
-              <span data-i18n="exportSelectedLabel">チェックした番号だけ書き出す</span>
+
+            <label class="check-row">
+              <input type="checkbox" id="trimSilentEdge" checked>
+              <span data-i18n="trimEdgeLabel">マーカーが先頭・末尾ぴったりの場合の空ファイルを除外</span>
             </label>
-            <div id="exportNumberChecklist" class="export-number-checklist" aria-live="polite"></div>
+
+            <button type="button" id="exportBtn" class="primary-btn wide" disabled data-i18n="exportBtn">分割書き出し</button>
+            <div id="exportStatus" class="export-status" data-i18n="exportWaiting">書き出し待機中</div>
           </div>
-
-          <div class="settings-block">
-            <div class="field-label inner-label" data-i18n="fadeOptionsTitle">フェード処理</div>
-            <label class="check-row compact-check">
-              <input type="checkbox" id="fadeInEnabled">
-              <span data-i18n="fadeInLabel">フェードインを適用</span>
-            </label>
-            <label class="check-row compact-check">
-              <input type="checkbox" id="fadeOutEnabled">
-              <span data-i18n="fadeOutLabel">フェードアウトを適用</span>
-            </label>
-            <label class="range-row" for="fadeDuration">
-              <span data-i18n="fadeDurationLabel">フェード時間</span>
-              <input type="range" id="fadeDuration" min="0" max="5" value="0.10" step="0.01">
-              <strong id="fadeDurationValue">0.10s</strong>
-            </label>
-          </div>
-
-          <label class="check-row">
-            <input type="checkbox" id="useFolderSave">
-            <span data-i18n="folderSaveLabel">ZIPではなく選択フォルダへ直接保存（Chrome/Edgeなど対応ブラウザのみ）</span>
-          </label>
-
-          <label class="check-row">
-            <input type="checkbox" id="trimSilentEdge" checked>
-            <span data-i18n="trimEdgeLabel">マーカーが先頭・末尾ぴったりの場合の空ファイルを除外</span>
-          </label>
-
-          <button type="button" id="exportBtn" class="primary-btn wide" disabled data-i18n="exportBtn">分割書き出し</button>
-          <div id="exportStatus" class="export-status" data-i18n="exportWaiting">書き出し待機中</div>
         </section>
 
         <section class="panel preview-panel">
